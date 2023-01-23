@@ -1,0 +1,168 @@
+/*
+About the company
+This is an analysis of a churn dataset for a Telecommunications company that provides phone and internet services to customers in california. 
+The dataset details about customer demographics, location, services, and current status.
+
+Business Task
+The business task is discovering why some customers stopped using our services and how we can retain more customers.
+My analysis is aimed at discovering the categories of customers based on the customer status (the customer status groups customers into three: customers that churned, stayed and joined recently).
+I will be uncovering customers' pain point; how each categories of customers differ from each other, etc.
+
+Questions my analysis will answer
+1. What are the most common reasons customers leave? 
+2. Are we losing high-value customers? High-value with regards to revenue.
+3. What steps can we take to retain more customers?
+
+*/
+
+#This dataset was gotten from Maven Analytics data playground. I am going to commence the data analysis process by cleaning the data. I'll be checking for duplicate tables; any records that are outliers in the age, gender, marital status and other important tables.
+SELECT
+customer_id, COUNT(customer_id)
+FROM
+customers.telecom_customer_churn
+GROUP BY customer_id
+HAVING COUNT(customer_id) > 1;
+
+SELECT *
+FROM telecom_customer_churn
+WHERE NOT gender = 'Female' AND NOT gender = 'Male';
+
+SELECT *
+FROM telecom_customer_churn
+WHERE NOT married = 'Yes' AND NOT married = 'No';
+
+# From all indications, the dataset is clean. I'm going to see if there's anything between marital status and usage. Let's look at the number of married to unmarried people
+
+SELECT
+married, count(*)
+FROM
+telecom_customer_churn
+GROUP BY married;
+# We have 3402 married people and 3641 unmarried; a difference of 239. 
+
+# I am going to go ahead to probe into the age of customers.
+
+SELECT age, count(*) AS number_of_users 
+FROM telecom_customer_churn
+GROUP BY age 
+ORDER BY age ASC;
+# We can see that the youngest age = 18 years old and the oldest = 80 years old. I want to find out which age has the largest number of users.
+
+SELECT age, count(*) AS number_of_users 
+FROM telecom_customer_churn
+GROUP BY age 
+ORDER BY number_of_users DESC;
+
+# We see here that users that fall within 42 years are the largest users and people at 72 years old are our lowest users. Infact we see that age grades 42, 47, and 40 have the highest number of users.
+# Let me check our revenue and see if it equates to our most popular age grades
+
+SELECT
+age, max(total_revenue) AS maximum_revenue, count(*)
+FROM
+telecom_customer_churn
+GROUP BY age
+ORDER BY maximum_revenue DESC;
+
+#From the results above, we see thatthe  top 3 ages that has brought in the largest revenue are 56, 46 and 75. I want to do something risky and check this trend using tenure.
+SELECT
+age, max(total_revenue) AS maximum_revenue, ROUND(tenure_in_months/12) AS tenure_in_years, count(*)
+FROM
+telecom_customer_churn
+GROUP BY age, tenure_in_years
+ORDER BY maximum_revenue DESC, tenure_in_years DESC;
+/*From the results, we see that age grades that have stayed the longest I.e. 6 years are the top revenue bringers. 
+Our highest number of users fall within ages 42, 47, and 40.  However, the top 3 ages that brought in the largest revenue are 56, 46 and 75 and they've stayed with us for the longest time.
+I am going to check if people within the our highest revenue ages have churned. 
+
+FIRST, LET ME REPRESENT THE PREVIOUS DATA IN PERCENTAGE. ( I'll adress this later)
+*/
+
+# Let's look at the customer status 
+SELECT
+customer_status, count(*)
+FROM
+telecom_customer_churn
+GROUP BY customer_status; 
+# We have 4720 people that stayed, we lost 1869 people and 454 people joined. We'll check our marketing offer to see if there's a correlation between those that left and the last time they accepted a marketing offer
+
+SELECT
+offer,customer_status,count(*)
+FROM
+telecom_customer_churn
+GROUP BY offer, customer_status
+ORDER BY count(*) DESC;
+# We see that majority of people that we lost(1051) had not accepted any offer, but also majority of people that stayed(2547) also had not received any marketing offer.
+# WE WILL REP THIS IN % later
+
+ 
+# Let's dive deeper into this churn data and seen the most common reasons for customer churn.
+/* 
+Based on our results, we see that we lost 841 people to a competitor, 321 to dissatisfaction, 314 to attitude, 211 to price and 182 to other. Therefore,we've lost most customers to another/other telecom companies.
+Based on this, we have to find out what other competitors have that we don't have (I don't have access to that data).
+We need to answer the question of "Why are customers staying?" and "What is the difference between customers that stayed and the ones that left?"
+*/
+
+SELECT
+customer_status,number_of_referrals
+FROM
+telecom_customer_churn
+GROUP BY customer_status, number_of_referrals
+ORDER BY number_of_referrals DESC;
+# I need to group this based on customer status "stayed" "churned" "joined" 
+
+SELECT
+customer_status, sum(number_of_referrals)
+FROM
+telecom_customer_churn
+GROUP BY customer_status;
+# We clearly see that most of our referrals are from people that stayed, we got a total of 12,342 referals from people that stayed and 974 from people that churned and 431 from people that joined. Next up, I am checking customers' tenure in years
+
+SELECT
+customer_status, AVG(tenure_in_months/12) AS tenure_in_years
+FROM
+telecom_customer_churn
+GROUP BY customer_status;
+
+# We see that the tenure in years is properly spread out. There seems to be no correlation here. let me check if there is a correlation between contract and churn rate. This could have something to do with retention rate. 
+SELECT
+customer_status, contract, count(*)
+FROM 
+telecom_customer_churn
+GROUP BY
+customer_status, contract;
+
+SELECT
+customer_status,contract, count(*)
+FROM 
+telecom_customer_churn
+WHERE customer_status = 'Churned'
+GROUP BY
+contract;
+
+SELECT
+customer_status, contract, count(*)
+FROM 
+telecom_customer_churn
+GROUP BY
+customer_status, contract
+ORDER BY customer_status;
+
+# From the results, we note the following, the most customers' that churned have a monthly contract and the least had a two year contract. We also see that majority of people that stayed has a two-year contract. But most people that joined, joined on a monthly plan.
+# Let's check this contract with churn_reason
+
+SELECT
+customer_status, contract, churn_reason, count(*) AS number_of_users
+FROM 
+telecom_customer_churn
+WHERE customer_status = 'Churned'
+GROUP BY
+customer_status, contract, churn_reason
+ORDER BY number_of_users DESC;
+
+# Based on the results in the above, we can see that the top 3 reasons people leave us is because "Competitor had better devices", "Competitor made better offer", and "Attitude of support person". Also most people that churned are on the monthly contract
+
+
+
+
+
+
